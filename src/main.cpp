@@ -60,7 +60,6 @@ int16_t servo_2_max = 180;
 Servo servo1;
 Servo servo2;
 
-
 typedef struct s_data_task
 {
 	int duration;
@@ -74,13 +73,13 @@ typedef struct s_data_task
 enum e_wifi_modes
 {
 	NONE_MODE = 0,
-	AP_MASK		= 0b00001,
-	STA_MASK	= 0b00010,
-	STD_MODE	= 0b00100,
-	SENSORS_MODE= 0b01000,
-	DFA_MODE	= 0b01100,
-	AP_MODE		= 0b10000,
-	MODE_MASK	= 0b11100,
+	AP_MASK = 0b00001,
+	STA_MASK = 0b00010,
+	STD_MODE = 0b00100,
+	SENSORS_MODE = 0b01000,
+	DFA_MODE = 0b01100,
+	AP_MODE = 0b10000,
+	MODE_MASK = 0b11100,
 };
 
 t_data_task g_data_task[3];
@@ -119,7 +118,7 @@ AsyncWebServer server(80);
 bool oscAddressChanged = false;
 unsigned int oscAddress = 1;
 unsigned int outUdpPort = 49100;
-unsigned int udp_in_port = 49141;////// IN PORT 
+unsigned int udp_in_port = 49141; ////// IN PORT
 char incomingPacket[255];
 String convertedPacket;
 char replyPacket[] = "Message received";
@@ -397,7 +396,7 @@ String processor(const String &var)
 	// {
 	// 	return (usine_ip.toString());
 	// }
-	// else 
+	// else
 	// if (var == "USINEPORT")
 	// {
 	// 	char *intStr;
@@ -420,13 +419,13 @@ String processor(const String &var)
 	// 	free(intStr);
 	// 	return (StringPort);
 	// }
-	// else 
+	// else
 	// if (var == "TRIPODEID")
 	// {
 	// 	String string_tripode_id = String(tripode_id);
 	// 	return (string_tripode_id);
 	// }
-	// else 
+	// else
 	// if (var == "FRACTALSTATEPOSX")
 	// {
 	// 	char *intStr;
@@ -437,8 +436,8 @@ String processor(const String &var)
 	// 	return (StringPos);
 	// }
 	// else
-	// else 
-	// else 
+	// else
+	// else
 	// else if (var == "STASSID")
 	// {
 	// 	String string_ssid = String(ssid);
@@ -796,98 +795,143 @@ void setup_server_for_ap()
 
 	server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
 			  {
-				//   if (request->hasParam("orca_ip"))
-				//   {
+				  //   if (request->hasParam("orca_ip"))
+				  //   {
 
-				// 	  // AsyncWebParameter* p = request->getParam("orca_ip");
-				// 	  //   Serial.print("Orca ip :");
-				// 	  uint8_t *buff;
-				// 	  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
-				// 	  request->getParam("orca_ip")->value().toCharArray((char *)buff, 50);
-				// 	  //   Serial.println(request->getParam("orca_ip")->value().toCharArray());
-				// 	  orca_ip = IPAddress(get_octet((char *)buff, 1), get_octet((char *)buff, 2), get_octet((char *)buff, 3), get_octet((char *)buff, 4));
+				  // 	  // AsyncWebParameter* p = request->getParam("orca_ip");
+				  // 	  //   Serial.print("Orca ip :");
+				  // 	  uint8_t *buff;
+				  // 	  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
+				  // 	  request->getParam("orca_ip")->value().toCharArray((char *)buff, 50);
+				  // 	  //   Serial.println(request->getParam("orca_ip")->value().toCharArray());
+				  // 	  orca_ip = IPAddress(get_octet((char *)buff, 1), get_octet((char *)buff, 2), get_octet((char *)buff, 3), get_octet((char *)buff, 4));
 
-				// 	  Serial.println(orca_ip.toString());
+				  // 	  Serial.println(orca_ip.toString());
 
-				// 	  set_data_to_csv("orca_ip", (char *)buff);
-				// 	  free(buff);
-				//   }
-				//   if (request->hasParam("orca_port"))
-				//   {
-				// 	  uint8_t *buff;
-				// 	  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
-				// 	  request->getParam("orca_port")->value().toCharArray((char *)buff, 50);
-				// 	  orca_port = atoi((char *)buff);
-				// 	  set_data_to_csv("orca_port", (char *)buff);
-				// 	  free(buff);
-				//   }
-				//   if (request->hasParam("usine_ip"))
-				//   {
-				// 	  uint8_t *buff;
-				// 	  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
-				// 	  request->getParam("usine_ip")->value().toCharArray((char *)buff, 50);
-				// 	  //   Serial.println(request->getParam("orca_ip")->value().toCharArray());
-				// 	  usine_ip = IPAddress(get_octet((char *)buff, 1), get_octet((char *)buff, 2), get_octet((char *)buff, 3), get_octet((char *)buff, 4));
+				  // 	  set_data_to_csv("orca_ip", (char *)buff);
+				  // 	  free(buff);
+				  //   }
+				  //   if (request->hasParam("orca_port"))
+				  //   {
+				  // 	  uint8_t *buff;
+				  // 	  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
+				  // 	  request->getParam("orca_port")->value().toCharArray((char *)buff, 50);
+				  // 	  orca_port = atoi((char *)buff);
+				  // 	  set_data_to_csv("orca_port", (char *)buff);
+				  // 	  free(buff);
+				  //   }
+				  //   if (request->hasParam("usine_ip"))
+				  //   {
+				  // 	  uint8_t *buff;
+				  // 	  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
+				  // 	  request->getParam("usine_ip")->value().toCharArray((char *)buff, 50);
+				  // 	  //   Serial.println(request->getParam("orca_ip")->value().toCharArray());
+				  // 	  usine_ip = IPAddress(get_octet((char *)buff, 1), get_octet((char *)buff, 2), get_octet((char *)buff, 3), get_octet((char *)buff, 4));
 
-				// 	  Serial.println(usine_ip.toString());
+				  // 	  Serial.println(usine_ip.toString());
 
-				// 	  set_data_to_csv("usine_ip", (char *)buff);
-				// 	  free(buff);
-				//   }
-				//   if (request->hasParam("usine_port"))
-				//   {
-				// 	  uint8_t *buff;
-				// 	  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
-				// 	  request->getParam("usine_port")->value().toCharArray((char *)buff, 50);
-				// 	  usine_port = atoi((char *)buff);
-				// 	  set_data_to_csv("usine_port", (char *)buff);
-				// 	  free(buff);
-				//   }
-				//   if (request->hasParam("tripode_id"))
-				//   {
-				// 	  uint8_t *buff;
-				// 	  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
-				// 	  request->getParam("tripode_id")->value().toCharArray((char *)buff, 50);
-				// 	  if (tripode_id)
-				// 	  {
-				// 		  free(tripode_id);
-				// 	  }
-				// 	  tripode_id = strdup((char *)buff);
-				// 	  set_data_to_csv("tripode_id", (char *)buff);
-				// 	  free(buff);
-				//   }
-				//   if (request->hasParam("fractal_state_pos_x"))
-				//   {
-				// 	  uint8_t *buff;
-				// 	  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
-				// 	  request->getParam("fractal_state_pos_x")->value().toCharArray((char *)buff, 50);
-				// 	  fractal_state_pos_x = atoi((char *)buff);
-				// 	  set_data_to_csv("fractal_state_pos_x", (char *)buff);
-				// 	  free(buff);
-				//   }
-				//   if (request->hasParam("fractal_state_pos_y"))
-				//   {
-				// 	  uint8_t *buff;
-				// 	  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
-				// 	  request->getParam("fractal_state_pos_y")->value().toCharArray((char *)buff, 50);
-				// 	  fractal_state_pos_y = atoi((char *)buff);
-				// 	  set_data_to_csv("fractal_state_pos_y", (char *)buff);
-				// 	  free(buff);
-				//   }
+				  // 	  set_data_to_csv("usine_ip", (char *)buff);
+				  // 	  free(buff);
+				  //   }
+				  //   if (request->hasParam("usine_port"))
+				  //   {
+				  // 	  uint8_t *buff;
+				  // 	  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
+				  // 	  request->getParam("usine_port")->value().toCharArray((char *)buff, 50);
+				  // 	  usine_port = atoi((char *)buff);
+				  // 	  set_data_to_csv("usine_port", (char *)buff);
+				  // 	  free(buff);
+				  //   }
+				  //   if (request->hasParam("tripode_id"))
+				  //   {
+				  // 	  uint8_t *buff;
+				  // 	  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
+				  // 	  request->getParam("tripode_id")->value().toCharArray((char *)buff, 50);
+				  // 	  if (tripode_id)
+				  // 	  {
+				  // 		  free(tripode_id);
+				  // 	  }
+				  // 	  tripode_id = strdup((char *)buff);
+				  // 	  set_data_to_csv("tripode_id", (char *)buff);
+				  // 	  free(buff);
+				  //   }
+				  //   if (request->hasParam("fractal_state_pos_x"))
+				  //   {
+				  // 	  uint8_t *buff;
+				  // 	  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
+				  // 	  request->getParam("fractal_state_pos_x")->value().toCharArray((char *)buff, 50);
+				  // 	  fractal_state_pos_x = atoi((char *)buff);
+				  // 	  set_data_to_csv("fractal_state_pos_x", (char *)buff);
+				  // 	  free(buff);
+				  //   }
+				  if (request->hasParam("servo_1_min"))
+				  {
+					  uint8_t *buff;
+					  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
+					  request->getParam("servo_1_min")->value().toCharArray((char *)buff, 50);
+					  servo_1_min = atoi((char *)buff);
+					  set_data_to_csv("servo_1_min", (char *)buff);
+					  free(buff);
+				  }
+				  if (request->hasParam("servo_1_mid"))
+				  {
+					  uint8_t *buff;
+					  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
+					  request->getParam("servo_1_mid")->value().toCharArray((char *)buff, 50);
+					  servo_1_mid = atoi((char *)buff);
+					  set_data_to_csv("servo_1_mid", (char *)buff);
+					  free(buff);
+				  }
+				  if (request->hasParam("servo_1_max"))
+				  {
+					  uint8_t *buff;
+					  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
+					  request->getParam("servo_1_max")->value().toCharArray((char *)buff, 50);
+					  servo_1_max = atoi((char *)buff);
+					  set_data_to_csv("servo_1_max", (char *)buff);
+					  free(buff);
+				  }
+				  if (request->hasParam("servo_2_min"))
+				  {
+					  uint8_t *buff;
+					  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
+					  request->getParam("servo_2_min")->value().toCharArray((char *)buff, 50);
+					  servo_2_min = atoi((char *)buff);
+					  set_data_to_csv("servo_2_min", (char *)buff);
+					  free(buff);
+				  }
+				  if (request->hasParam("servo_2_mid"))
+				  {
+					  uint8_t *buff;
+					  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
+					  request->getParam("servo_2_mid")->value().toCharArray((char *)buff, 50);
+					  servo_2_mid = atoi((char *)buff);
+					  set_data_to_csv("servo_2_mid", (char *)buff);
+					  free(buff);
+				  }
+				  if (request->hasParam("servo_2_max"))
+				  {
+					  uint8_t *buff;
+					  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
+					  request->getParam("servo_2_max")->value().toCharArray((char *)buff, 50);
+					  servo_2_max = atoi((char *)buff);
+					  set_data_to_csv("servo_2_max", (char *)buff);
+					  free(buff);
+				  }
 
-				//   if (request->hasParam("sta_ssid"))
-				//   {
-				// 	  uint8_t *buff;
-				// 	  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
-				// 	  request->getParam("sta_ssid")->value().toCharArray((char *)buff, 50);
-				// 	  if (ssid)
-				// 	  {
-				// 		  free(ssid);
-				// 	  }
-				// 	  ssid = strdup((char *)buff);
-				// 	  set_data_to_csv("sta_ssid", (char *)buff);
-				// 	  free(buff);
-				//   }
+				  //   if (request->hasParam("sta_ssid"))
+				  //   {
+				  // 	  uint8_t *buff;
+				  // 	  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
+				  // 	  request->getParam("sta_ssid")->value().toCharArray((char *)buff, 50);
+				  // 	  if (ssid)
+				  // 	  {
+				  // 		  free(ssid);
+				  // 	  }
+				  // 	  ssid = strdup((char *)buff);
+				  // 	  set_data_to_csv("sta_ssid", (char *)buff);
+				  // 	  free(buff);
+				  //   }
 				  if (request->hasParam("udp_in_port"))
 				  {
 					  uint8_t *buff;
@@ -916,8 +960,8 @@ void setup_server_for_ap()
 						  free(bluetooth_mac_addr);
 					  }
 					  bluetooth_mac_addr = strdup((char *)buff);
-					//   PS4.end();
-					//   PS4.begin((char*)bluetooth_mac_addr);
+					  //   PS4.end();
+					  //   PS4.begin((char*)bluetooth_mac_addr);
 					  set_data_to_csv("bluetooth_mac_addr", (char *)buff);
 					  free(buff);
 				  }
@@ -1186,18 +1230,43 @@ void setup_credentials()
 	// 	free(tmp);
 	// }
 
-	// if (tmp = get_data_from_csv("fractal_state_pos_y"))
-	// {
-	// 	fractal_state_pos_y = atoi(tmp);
-	// 	free(tmp);
-	// }
-
-
 
 	// if ((ssid = get_data_from_csv("sta_ssid")) == 0)
 	// {
 	// 	ssid = strdup("tripodesAP");
 	// }
+	if (tmp = get_data_from_csv("servo_1_min"))
+	{
+		servo_1_min = atoi(tmp);
+		free(tmp);
+	}
+	if (tmp = get_data_from_csv("servo_1_mid"))
+	{
+		servo_1_mid = atoi(tmp);
+		free(tmp);
+	}
+	if (tmp = get_data_from_csv("servo_1_max"))
+	{
+		servo_1_max = atoi(tmp);
+		free(tmp);
+	}
+
+	if (tmp = get_data_from_csv("servo_2_min"))
+	{
+		servo_2_min = atoi(tmp);
+		free(tmp);
+	}
+	if (tmp = get_data_from_csv("servo_2_mid"))
+	{
+		servo_2_mid = atoi(tmp);
+		free(tmp);
+	}
+	if (tmp = get_data_from_csv("servo_2_max"))
+	{
+		servo_2_max = atoi(tmp);
+		free(tmp);
+	}
+
 
 	if (tmp = get_data_from_csv("udp_in_port"))
 	{
@@ -1251,21 +1320,23 @@ void ap_setup()
 	Udp.begin(udp_in_port);
 
 	//Setup DNS
-    if (!MDNS.begin("rc")) {
-        Serial.println("Error setting up MDNS responder!");
-        while(1) {
-            delay(1000);
-        }
-    }
-    Serial.println("mDNS responder started");
+	if (!MDNS.begin("rc"))
+	{
+		Serial.println("Error setting up MDNS responder!");
+		while (1)
+		{
+			delay(1000);
+		}
+	}
+	Serial.println("mDNS responder started");
 
-    // Start TCP (HTTP) server
-    // server.begin();
-    // Serial.println("TCP server started");
+	// Start TCP (HTTP) server
+	// server.begin();
+	// Serial.println("TCP server started");
 
-    // Add service to MDNS-SD
-    MDNS.addService("http", "tcp", 80);
-    MDNS.addService("http", "udp", udp_in_port);//???
+	// Add service to MDNS-SD
+	MDNS.addService("http", "tcp", 80);
+	MDNS.addService("http", "udp", udp_in_port); //???
 
 	// xTaskCreatePinnedToCore(update_sta_list, "update_sta_list", 10000, NULL, 1, &Task1, 1);
 }
@@ -1333,7 +1404,6 @@ void setup()
 
 	Wire.begin();
 
-
 	servo1.attach(servo1Pin);
 	servo2.attach(servo2Pin);
 	// oscAddress = EEPROM.readUInt(0);
@@ -1393,7 +1463,6 @@ void setup()
 	server.serveStatic("/main.css", SPIFFS, "/main.css");
 
 	// PS4.begin((char*)bluetooth_mac_addr);
-
 
 	ap_setup();
 	// for (;;)
@@ -1673,6 +1742,16 @@ void look_for_udp_message()
 			int angle = convertedPacket.substring(convertedPacket.indexOf("ANGLE") + 5).toInt();
 
 			Serial.printf("Servo : %d, Angle : %d \n", servo, angle);
+			if (angle < 0)
+			{
+				servo1.write(map(angle, -100, 0, servo_1_min, servo_1_mid));
+   				servo2.write(map(angle, -100, 0, servo_2_min, servo_2_mid));				
+			}
+			else
+			{
+				servo1.write(map(angle, 0, 100, servo_1_mid, servo_1_max));
+   				servo2.write(map(angle, 0, 100, servo_2_mid, servo_2_max));
+			}
 		}
 	}
 }
@@ -1795,7 +1874,6 @@ void sendOrcaLine(char *line, uint16_t x, uint16_t y, const IPAddress ipOut, con
 	Udp.printf("write:%s;%d;%d", line, x, y);
 	Udp.endPacket();
 }
-
 
 void sendOscMessage(float dfa_value, t_sensors *sensors, const IPAddress ipOut, const uint32_t portOut)
 {
@@ -2072,7 +2150,7 @@ void loop()
 	// if (current_mode & NORM_MASK)
 
 	look_for_udp_message();
-	
+
 	//Serial.println(".");
 	delay(25);
 	// delay(500);
