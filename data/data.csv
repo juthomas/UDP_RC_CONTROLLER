@@ -1,0 +1,11 @@
+ap_ssid,tripodesAP
+ap_password,44448888
+bluetooth_mac_addr,01:01:01:01:01:01
+bluetooth_active,1
+udp_in_port,49161
+servo_1_min,0
+servo_1_mid,90
+servo_1_max,180
+servo_2_min,0
+servo_2_mid,90
+servo_2_max,180

@@ -1,0 +1,95 @@
+<html>
+
+<head>
+	<meta charset="UTF-8">
+	<link rel="icon" href="tripode.ico">
+	<link rel="stylesheet" href="main.css">
+</head>
+
+<body>
+	<h1>RC Cars Settings</h1>
+	
+	<form action="/" method="get" class="form-example">
+		<div class="form-example">
+			<label for="servo_1_min">SERVO 1 MIN :</label>
+			<input type="number" min="0" max="180" name="servo_1_min" id="servo_1_min" placeholder="min"
+			value="%SERVO1MIN%" required>
+		</div>
+		<div class="form-example">
+			<label for="servo_1_mid">SERVO 1 MID :</label>
+			<input type="number" min="0" max="180" name="servo_1_mid" id="servo_1_mid" placeholder="mid"
+				value="%SERVO1MID%" required>
+		</div>
+		<div class="form-example">
+			<label for="servo_1_max">SERVO 1 MAX :</label>
+			<input type="number" min="0" max="180" name="servo_1_max" id="servo_1_max" placeholder="max"
+				value="%SERVO1MAX%" required>
+		</div>
+	</br>
+		<div class="form-example">
+			<label for="servo_2_min">SERVO 2 MIN :</label>
+			<input type="number" min="0" max="180" name="servo_2_min" id="servo_2_min" placeholder="min"
+				value="%SERVO2MIN%" required>
+		</div>
+		<div class="form-example">
+			<label for="servo_2_mid">SERVO 1 MID :</label>
+			<input type="number" min="0" max="180" name="servo_2_mid" id="servo_2_mid" placeholder="mid"
+				value="%SERVO2MID%" required>
+		</div>
+		<div class="form-example">
+			<label for="servo_2_max">SERVO 1 MAX :</label>
+			<input type="number" min="0" max="180" name="servo_2_max" id="servo_2_max" placeholder="max"
+				value="%SERVO2MAX%" required>
+		</div>
+
+
+
+		<div class="form-example">
+			<input type="submit" value="Update">
+		</div>
+	</form>
+
+
+	<form action="/" method="get" class="form-example">
+		<div class="form-example">
+			<label for="bluetooth_mac_addr">BLUETOOTH MAC :</label>
+			<input type="text" name="bluetooth_mac_addr" id="bluetooth_mac_addr" placeholder="Bluetooth Mac Addr"
+				value="%BLUETOOTHMACADDR%" required>
+		</div>
+		<div class="form-example">
+			<label for="bluetooth_active">BLUETOOTH ACTIVE :</label>
+			<input type="number" min="0" max="1" name="bluetooth_active" id="bluetooth_active" placeholder="position"
+				value="%BLUETOOTHACTIVE%" required>
+		</div>
+		<div class="form-example">
+			<input type="submit" value="Update">
+		</div>
+	</form>
+
+	<form action="/" method="get" class="form-example">
+		<div class="form-example">
+			<label for="udp_in_port">UDP IN PORT :</label>
+			<input type="text" name="udp_in_port" id="udp_in_port" placeholder="UDP port" value="%UDPINPORT%" required>
+		</div>
+		<div class="form-example">
+			<input type="submit" value="Update">
+		</div>
+	</form>
+
+	<form action="/" method="get" class="form-example">
+		<div class="form-example">
+			<label for="ap_ssid">AP SSID :</label>
+			<input type="text" name="ap_ssid" id="ap_ssid" placeholder="Ap Ssid" value="%APSSID%" required>
+		</div>
+		<div class="form-example">
+			<label for="ap_password">AP PASSWORD :</label>
+			<input type="text" name="ap_password" id="ap_password" placeholder="Ap Passord" value="%APPASSWORD%"
+				required>
+		</div>
+		<div class="form-example">
+			<input type="submit" value="Update">
+		</div>
+	</form>
+</body>
+
+</html>
