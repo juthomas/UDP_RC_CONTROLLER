@@ -1,52 +1,13 @@
 
 #include "ESPAsyncWebServer.h"
 #include "tripodes.h"
-#include <string>
-#include <HTTPClient.h>
-#include <list>
-#include <mutex>
-#include <ESPmDNS.h>
-// #include <PS4Controller.h>
-#include <Servo.h>
-// #include <ESP32Ping.h>
 
-// #include <Adafruit_L3GD20_U.h>
-//tripod
-//perf8888
-// const char *ssid = "tripodesAP";
-// const char *password = "44448888";
-// const char *ssid = "tripod";
-// const char *password = "perf8888";
-// const char *ssid = "Thinking Sound 2.4g";
-// const char *password = "rock&roll";
-
-// const char *ssid = "Dourr";
-// const char *password = "Akiraestlepluscooldeschien28os";
-
-TaskHandle_t Task1;
-
-std::mutex sta_list_mutex;
-
-// char *ssid;
-// char *password;
 char *APssid;
 char *APpassword;
 
 char *local_dns;
 char *bluetooth_mac_addr;
 int16_t bluetooth_active = 1;
-// char *tripode_id;
-// int16_t fractal_state_pos_x = 0;
-// int16_t fractal_state_pos_y = 10;
-// int16_t glyph_pos_x = 48;
-// int16_t glyph_pos_y = 6;
-
-// Adafruit_L3GD20_Unified gyro = Adafruit_L3GD20_Unified(20);
-const int motorFreq = 5000;
-const int motorResolution = 8;
-const int motorChannel1 = 0;
-const int motorChannel2 = 1;
-const int motorChannel3 = 2;
 
 static const int servo1Pin = 33;
 static const int servo2Pin = 32;
@@ -61,103 +22,15 @@ int16_t servo_2_max = 180;
 Servo servo1;
 Servo servo2;
 
-typedef struct s_data_task
-{
-	int duration;
-	int pwm;
-	int motor_id;
-	TaskHandle_t thisTaskHandler;
-} t_data_task;
-
-// typedef void(*t_task_func)(void *param);
-
-enum e_wifi_modes
-{
-	NONE_MODE = 0,
-	AP_MASK = 0b00001,
-	STA_MASK = 0b00010,
-	STD_MODE = 0b00100,
-	SENSORS_MODE = 0b01000,
-	DFA_MODE = 0b01100,
-	AP_MODE = 0b10000,
-	MODE_MASK = 0b11100,
-};
-
-t_data_task g_data_task[3];
-
-int timers_end[3] = {0, 0, 0};
-
-#define BLACK 0x0000
-#define WHITE 0xFFFF
-TFT_eSPI tft = TFT_eSPI(); // Invoke custom library
-Button2 btn1(BUTTON_1);
-Button2 btn2(BUTTON_2);
-
-// e_wifi_modes current_mode;
-uint8_t current_mode = 0;
-
-bool udp_sending = true;
-// const char* ssid = "Freebox-0E3EAE";
-// const char* password =  "taigaest1chien";
 
 WiFiUDP Udp;
-
-// IPAddress orca_ip(10, 87, 210, 255); // Raspi4 local addr
-// unsigned int orca_port = 49160;		 // Orca input port
-
-// IPAddress usine_ip(10, 0, 1, 14);
-// unsigned int usine_port = 2002; // remote port to receive OSC
-
-const IPAddress outIp(192, 168, 0, 12); // remote IP of your computer
-// const IPAddress outIp(192,168,0,41);        // remote IP of your computer
-
-// const IPAddress outIp(192,168,56,1);        // remote IP of your computer
-const unsigned int outPort = 2002; // remote port to receive OSC
 
 AsyncWebServer server(80);
 
 bool oscAddressChanged = false;
-unsigned int oscAddress = 1;
-unsigned int outUdpPort = 49100;
-unsigned int udp_in_port = 49141; ////// IN PORT
-char incomingPacket[255];
-String convertedPacket;
-char replyPacket[] = "Message received";
-
-void set_pwm0(int pwm);
-void set_pwm1(int pwm);
-void set_pwm2(int pwm);
-
-typedef void (*t_set_pwm)(int pwm);
-
-#define TASK_NUMBER 3
-static const t_set_pwm g_set_pwm[TASK_NUMBER] = {
-	(t_set_pwm)set_pwm0,
-	(t_set_pwm)set_pwm1,
-	(t_set_pwm)set_pwm2,
-};
-
-void stop_pwm0(void);
-void stop_pwm1(void);
-void stop_pwm2(void);
-
-typedef void (*t_stop_pwm)(void);
-
-#define TASK_NUMBER 3
-static const t_stop_pwm g_stop_pwm[TASK_NUMBER] = {
-	(t_stop_pwm)stop_pwm0,
-	(t_stop_pwm)stop_pwm1,
-	(t_stop_pwm)stop_pwm2,
-};
+unsigned int udp_in_port = 49141;
 
 WiFiClass WiFiAP;
-
-bool timersActives[3];
-int pwmValues[3];
-int timerPansements[3];
-hw_timer_t *timers[4] = {NULL, NULL, NULL, NULL};
-
-std::list<s_sta_list> sta_list;
 
 const char *wl_status_to_string(int ah)
 {
@@ -216,234 +89,9 @@ double fmap(double x, double in_min, double in_max, double out_min, double out_m
 	return (delta * dividend + (divisor / 2.0)) / divisor + out_min;
 }
 
-void IRAM_ATTR button1_handler(Button2 &btn)
-{
-	uint32_t click_type = btn.getClickType();
-
-	if (click_type == SINGLE_CLICK || click_type == LONG_CLICK)
-	{
-		Serial.println("Bouton A pressed");
-		if (current_mode == NONE_MODE)
-		{
-			current_mode = STD_MODE | STA_MASK;
-		}
-		else if (current_mode & STA_MASK)
-		{
-			if ((current_mode & MODE_MASK) == STD_MODE)
-			{
-				current_mode = SENSORS_MODE | STA_MASK;
-			}
-			else if ((current_mode & MODE_MASK) == SENSORS_MODE)
-			{
-				current_mode = DFA_MODE | STA_MASK;
-			}
-			else if ((current_mode & MODE_MASK) == DFA_MODE)
-			{
-				current_mode = STD_MODE | STA_MASK;
-			}
-		}
-		else if (current_mode & AP_MASK)
-		{
-			if ((current_mode & MODE_MASK) == STD_MODE)
-			{
-				Serial.printf("----- STD mode : %d\n", current_mode);
-				current_mode = SENSORS_MODE | AP_MASK;
-				Serial.printf("--AF- STD mode : %d\n", current_mode);
-			}
-			else if ((current_mode & MODE_MASK) == SENSORS_MODE)
-			{
-				Serial.printf("----- SENSOR mode : %d\n", current_mode);
-				current_mode = DFA_MODE | AP_MASK;
-				Serial.printf("--AF- SENSOR mode : %d\n", current_mode);
-			}
-			else if ((current_mode & MODE_MASK) == DFA_MODE)
-			{
-				Serial.printf("----- DFA mode : %d\n", current_mode);
-				current_mode = AP_MODE | AP_MASK;
-				Serial.printf("--AF- DFA mode : %d\n", current_mode);
-			}
-			else if ((current_mode & MODE_MASK) == AP_MODE)
-			{
-				Serial.printf("----- Ap mode : %d\n", current_mode);
-				current_mode = STD_MODE | AP_MASK;
-				Serial.printf("--AF- Ap mode : %d\n", current_mode);
-			}
-		}
-	}
-}
-
-void IRAM_ATTR button2_handler(Button2 &btn)
-{
-	uint32_t click_type = btn.getClickType();
-
-	if (click_type == SINGLE_CLICK || click_type == LONG_CLICK)
-	{
-		Serial.println("Bouton B pressed");
-		if (current_mode == NONE_MODE)
-		{
-			// current_mode = AP_MODE;
-			current_mode = AP_MODE | AP_MASK;
-		}
-		else if (current_mode)
-		{
-			udp_sending = !udp_sending;
-			// oscAddress = oscAddress > 0 ? oscAddress - 1 : 0;
-			// oscAddressChanged = true;
-			// // EEPROM.writeUInt(10, oscAddress);
-			// // EEPROM.commit();
-			// if (current_mode == STA_MODE)
-			// {
-			// 	current_mode = DFA_MODE;
-			// }
-			// else if (current_mode == SENSORS_MODE)
-			// {
-			// 	current_mode = STA_MODE;
-			// }
-			// else if (current_mode == DFA_MODE)
-			// {
-			// 	current_mode = SENSORS_MODE;
-			// }
-		}
-	}
-	// if (click_type == DOUBLE_CLICK)
-	// {
-	// 	Serial.println("Bouton B double clicked");
-
-	// 	// oscAddress = EEPROM.readUInt(10);
-	// 	current_mode = SENSORS_MODE;
-	// }
-}
-
-void button_init()
-{
-	btn1.setClickHandler(button1_handler);
-	btn1.setLongClickHandler(button1_handler);
-	btn1.setDoubleClickHandler(button1_handler);
-	btn1.setTripleClickHandler(button1_handler);
-	btn2.setClickHandler(button2_handler);
-	btn2.setLongClickHandler(button2_handler);
-	btn2.setDoubleClickHandler(button2_handler);
-	btn2.setTripleClickHandler(button2_handler);
-}
-
-void IRAM_ATTR button_loop()
-{
-	btn1.loop();
-	btn2.loop();
-}
-
-void IRAM_ATTR call_buttons(void)
-{
-	button_loop();
-}
-
-void showVoltage()
-{
-	static uint64_t timeStamp = 0;
-	if (millis() - timeStamp > 1000)
-	{
-		timeStamp = millis();
-		uint16_t v = analogRead(ADC_PIN);
-		float battery_voltage = ((float)v / 4095.0) * 2.0 * 3.3 * (VREF / 1000.0);
-		String voltage = "Voltage :" + String(battery_voltage) + "V";
-		Serial.println(voltage);
-		tft.fillScreen(TFT_BLACK);
-		tft.setTextDatum(MC_DATUM);
-		tft.drawString(voltage, tft.width() / 2, tft.height() / 2);
-	}
-}
-
-// Need transform to not trigger the watchdog
-String get_sta_list()
-{
-	// <ul>
-	//	<li>Ip1</li>
-	//	<li>Ip2</li>
-	//	....
-	// </ul>
-	sta_list_mutex.lock();
-	String html_code = "<ul>\n";
-	for (const t_sta_list &elem : sta_list)
-	{
-		Serial.print("Ip : ");
-		Serial.print(elem.ip_adress);
-		Serial.print(" has website : ");
-		Serial.println(elem.has_website);
-		if (elem.has_website)
-		{
-			html_code += "	<li><a href=\"http://" + elem.ip_adress + "\">" + elem.ip_adress + "</a> (Tripode) </li>\n";
-		}
-		else
-		{
-			html_code += "	<li>" + elem.ip_adress + "</li>\n";
-		}
-	}
-
-	// HTTPClient http_request;
-	// http_request.begin("http://" + String(ip_char) );
-
-	// String httpcode =  String(http_request.GET());
-	// http_request.end();
-
-	html_code += "<ul>";
-	sta_list_mutex.unlock();
-	return (html_code);
-}
-
 String processor(const String &var)
 {
 	Serial.println(var);
-	// if (var == "USINEIP")
-	// {
-	// 	return (usine_ip.toString());
-	// }
-	// else
-	// if (var == "USINEPORT")
-	// {
-	// 	char *intStr;
-	// 	intStr = (char *)malloc(sizeof(char) * 15);
-	// 	intStr = itoa(usine_port, intStr, 10);
-	// 	String StringPort = String(intStr);
-	// 	free(intStr);
-	// 	return (StringPort);
-	// }
-	// else if (var == "ORCAIP")
-	// {
-	// 	return (orca_ip.toString());
-	// }
-	// else if (var == "ORCAPORT")
-	// {
-	// 	char *intStr;
-	// 	intStr = (char *)malloc(sizeof(char) * 15);
-	// 	intStr = itoa(orca_port, intStr, 10);
-	// 	String StringPort = String(intStr);
-	// 	free(intStr);
-	// 	return (StringPort);
-	// }
-	// else
-	// if (var == "TRIPODEID")
-	// {
-	// 	String string_tripode_id = String(tripode_id);
-	// 	return (string_tripode_id);
-	// }
-	// else
-	// if (var == "FRACTALSTATEPOSX")
-	// {
-	// 	char *intStr;
-	// 	intStr = (char *)malloc(sizeof(char) * 15);
-	// 	intStr = itoa(fractal_state_pos_x, intStr, 10);
-	// 	String StringPos = String(intStr);
-	// 	free(intStr);
-	// 	return (StringPos);
-	// }
-	// else
-	// else
-	// else
-	// else if (var == "STASSID")
-	// {
-	// 	String string_ssid = String(ssid);
-	// 	return (string_ssid);
-	// }
 	if (var == "SERVO1MIN")
 	{
 		char *intStr;
@@ -536,10 +184,6 @@ String processor(const String &var)
 		String string_password = String(APpassword);
 		return (string_password);
 	}
-	else if (var == "STALIST")
-	{
-		return (get_sta_list());
-	}
 	return String();
 }
 
@@ -580,51 +224,6 @@ bool is_key_matching(char *key, char *file, size_t index)
 		return (true);
 	}
 	return (false);
-}
-
-void update_sta_list(void *params)
-{
-	wifi_sta_list_t wifi_sta_list;
-	tcpip_adapter_sta_list_t adapter_sta_list;
-
-	for (;;)
-	{
-
-		memset(&wifi_sta_list, 0, sizeof(wifi_sta_list));
-		memset(&adapter_sta_list, 0, sizeof(adapter_sta_list));
-
-		esp_wifi_ap_get_sta_list(&wifi_sta_list);
-		tcpip_adapter_get_sta_list(&wifi_sta_list, &adapter_sta_list);
-
-		// sta_list.clear();
-		std::list<t_sta_list> tmp_list;
-
-		for (int i = 0; i < adapter_sta_list.num; i++)
-		{
-			tcpip_adapter_sta_info_t station = adapter_sta_list.sta[i];
-			char *ip_char = ip4addr_ntoa(&(station.ip)); //leak?
-
-			HTTPClient http_request;
-			http_request.setConnectTimeout(5000);
-			http_request.setTimeout(5000);
-			String ip_str = String(ip_char);
-			http_request.begin(("http://" + ip_str + "/?test=42").c_str());
-			int http_code = http_request.GET();
-			// Serial.printf("Req code : %d\n", http_code);
-			// String httpcode =  String(http_request.GET());
-			bool has_website = http_code == 200 ? true : false;
-			// Serial.print("Ip sta :");
-			// Serial.println(ip_str);
-			tmp_list.push_front((t_sta_list){.ip_adress = ip_str, .has_website = has_website});
-			http_request.end();
-		}
-		sta_list_mutex.lock();
-		sta_list = tmp_list;
-		sta_list_mutex.unlock();
-		// Serial.println("Before");
-		delay(1000);
-		// Serial.println("After");
-	}
 }
 
 char *get_value_from_csv(char *file, size_t index)
@@ -764,10 +363,6 @@ char *get_data_from_csv(char *key)
 		Serial.printf("%s", buff);
 	}
 
-	// strchr()
-	// strncmp()
-	// size_t last_key_index = 0;
-	// size_t last_value_index = 0;
 	bool get_value = false;
 	for (size_t i = 0; i < file.size(); i++)
 	{
@@ -791,85 +386,13 @@ char *get_data_from_csv(char *key)
 	file.close();
 	return (0);
 
-	//get value from key here
 }
-
-//create function to store value from key here
 
 void setup_server_for_ap()
 {
 
 	server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
 			  {
-				  //   if (request->hasParam("orca_ip"))
-				  //   {
-
-				  // 	  // AsyncWebParameter* p = request->getParam("orca_ip");
-				  // 	  //   Serial.print("Orca ip :");
-				  // 	  uint8_t *buff;
-				  // 	  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
-				  // 	  request->getParam("orca_ip")->value().toCharArray((char *)buff, 50);
-				  // 	  //   Serial.println(request->getParam("orca_ip")->value().toCharArray());
-				  // 	  orca_ip = IPAddress(get_octet((char *)buff, 1), get_octet((char *)buff, 2), get_octet((char *)buff, 3), get_octet((char *)buff, 4));
-
-				  // 	  Serial.println(orca_ip.toString());
-
-				  // 	  set_data_to_csv("orca_ip", (char *)buff);
-				  // 	  free(buff);
-				  //   }
-				  //   if (request->hasParam("orca_port"))
-				  //   {
-				  // 	  uint8_t *buff;
-				  // 	  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
-				  // 	  request->getParam("orca_port")->value().toCharArray((char *)buff, 50);
-				  // 	  orca_port = atoi((char *)buff);
-				  // 	  set_data_to_csv("orca_port", (char *)buff);
-				  // 	  free(buff);
-				  //   }
-				  //   if (request->hasParam("usine_ip"))
-				  //   {
-				  // 	  uint8_t *buff;
-				  // 	  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
-				  // 	  request->getParam("usine_ip")->value().toCharArray((char *)buff, 50);
-				  // 	  //   Serial.println(request->getParam("orca_ip")->value().toCharArray());
-				  // 	  usine_ip = IPAddress(get_octet((char *)buff, 1), get_octet((char *)buff, 2), get_octet((char *)buff, 3), get_octet((char *)buff, 4));
-
-				  // 	  Serial.println(usine_ip.toString());
-
-				  // 	  set_data_to_csv("usine_ip", (char *)buff);
-				  // 	  free(buff);
-				  //   }
-				  //   if (request->hasParam("usine_port"))
-				  //   {
-				  // 	  uint8_t *buff;
-				  // 	  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
-				  // 	  request->getParam("usine_port")->value().toCharArray((char *)buff, 50);
-				  // 	  usine_port = atoi((char *)buff);
-				  // 	  set_data_to_csv("usine_port", (char *)buff);
-				  // 	  free(buff);
-				  //   }
-				  //   if (request->hasParam("tripode_id"))
-				  //   {
-				  // 	  uint8_t *buff;
-				  // 	  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
-				  // 	  request->getParam("tripode_id")->value().toCharArray((char *)buff, 50);
-				  // 	  if (tripode_id)
-				  // 	  {
-				  // 		  free(tripode_id);
-				  // 	  }
-				  // 	  tripode_id = strdup((char *)buff);
-				  // 	  set_data_to_csv("tripode_id", (char *)buff);
-				  // 	  free(buff);
-				  //   }
-				  //   if (request->hasParam("fractal_state_pos_x"))
-				  //   {
-				  // 	  uint8_t *buff;
-				  // 	  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
-				  // 	  request->getParam("fractal_state_pos_x")->value().toCharArray((char *)buff, 50);
-				  // 	  fractal_state_pos_x = atoi((char *)buff);
-				  // 	  set_data_to_csv("fractal_state_pos_x", (char *)buff);
-				  // 	  free(buff);
-				  //   }
 				  if (request->hasParam("servo_1_min"))
 				  {
 					  uint8_t *buff;
@@ -998,249 +521,17 @@ void setup_server_for_ap()
 					  free(buff);
 				  }
 
-				  request->send(SPIFFS, "/ApIndex.html", String(), false, processor);
-				  //   request->send(SPIFFS, "/index.html", String(), false, processor);
+				  request->send(SPIFFS, "/index.html", String(), false, processor);
 				  Serial.println("Client Here !");
 			  });
 
-	// 	server.on("/", HTTP_POST, [](AsyncWebServerRequest *request){
-
-	// 		Serial.println("Post req");
-	// 		if (request->hasParam("orca_ip"))
-	// 		{
-	// 			Serial.printf("Orca ip :", request->getParam("orca_ip"));
-	// 		}
-	// 		request->send(SPIFFS, "/ApIndex.html", String(), false, processor);
-	// //   request->send(SPIFFS, "/index.html", String(), false, processor);
-	// 		// Serial.println("Client Here !");
-	// 	});
 	server.begin();
 }
-
-// void setup_server_for_sta()
-// {
-
-// 	server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
-// 			  {
-// 				//   if (request->hasParam("orca_ip"))
-// 				//   {
-
-// 				// 	  // AsyncWebParameter* p = request->getParam("orca_ip");
-// 				// 	  //   Serial.print("Orca ip :");
-// 				// 	  uint8_t *buff;
-// 				// 	  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
-// 				// 	  request->getParam("orca_ip")->value().toCharArray((char *)buff, 50);
-// 				// 	  //   Serial.println(request->getParam("orca_ip")->value().toCharArray());
-// 				// 	  orca_ip = IPAddress(get_octet((char *)buff, 1), get_octet((char *)buff, 2), get_octet((char *)buff, 3), get_octet((char *)buff, 4));
-
-// 				// 	  Serial.println(orca_ip.toString());
-
-// 				// 	  set_data_to_csv("orca_ip", (char *)buff);
-// 				// 	  free(buff);
-// 				//   }
-// 				//   if (request->hasParam("orca_port"))
-// 				//   {
-// 				// 	  uint8_t *buff;
-// 				// 	  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
-// 				// 	  request->getParam("orca_port")->value().toCharArray((char *)buff, 50);
-// 				// 	  orca_port = atoi((char *)buff);
-// 				// 	  set_data_to_csv("orca_port", (char *)buff);
-// 				// 	  free(buff);
-// 				//   }
-// 				//   if (request->hasParam("usine_ip"))
-// 				//   {
-// 				// 	  uint8_t *buff;
-// 				// 	  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
-// 				// 	  request->getParam("usine_ip")->value().toCharArray((char *)buff, 50);
-// 				// 	  //   Serial.println(request->getParam("orca_ip")->value().toCharArray());
-// 				// 	  usine_ip = IPAddress(get_octet((char *)buff, 1), get_octet((char *)buff, 2), get_octet((char *)buff, 3), get_octet((char *)buff, 4));
-
-// 				// 	  Serial.println(usine_ip.toString());
-
-// 				// 	  set_data_to_csv("usine_ip", (char *)buff);
-// 				// 	  free(buff);
-// 				//   }
-// 				//   if (request->hasParam("usine_port"))
-// 				//   {
-// 				// 	  uint8_t *buff;
-// 				// 	  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
-// 				// 	  request->getParam("usine_port")->value().toCharArray((char *)buff, 50);
-// 				// 	  usine_port = atoi((char *)buff);
-// 				// 	  set_data_to_csv("usine_port", (char *)buff);
-// 				// 	  free(buff);
-// 				//   }
-
-// 				//   if (request->hasParam("tripode_id"))
-// 				//   {
-// 				// 	  uint8_t *buff;
-// 				// 	  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
-// 				// 	  request->getParam("tripode_id")->value().toCharArray((char *)buff, 50);
-// 				// 	  if (tripode_id)
-// 				// 	  {
-// 				// 		  free(tripode_id);
-// 				// 	  }
-// 				// 	  tripode_id = strdup((char *)buff);
-// 				// 	  set_data_to_csv("tripode_id", (char *)buff);
-// 				// 	  free(buff);
-// 				//   }
-// 				//   if (request->hasParam("fractal_state_pos_x"))
-// 				//   {
-// 				// 	  uint8_t *buff;
-// 				// 	  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
-// 				// 	  request->getParam("fractal_state_pos_x")->value().toCharArray((char *)buff, 50);
-// 				// 	  fractal_state_pos_x = atoi((char *)buff);
-// 				// 	  set_data_to_csv("fractal_state_pos_x", (char *)buff);
-// 				// 	  free(buff);
-// 				//   }
-// 				//   if (request->hasParam("fractal_state_pos_y"))
-// 				//   {
-// 				// 	  uint8_t *buff;
-// 				// 	  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
-// 				// 	  request->getParam("fractal_state_pos_y")->value().toCharArray((char *)buff, 50);
-// 				// 	  fractal_state_pos_y = atoi((char *)buff);
-// 				// 	  set_data_to_csv("fractal_state_pos_y", (char *)buff);
-// 				// 	  free(buff);
-// 				//   }
-// 				//   if (request->hasParam("glyph_pos_x"))
-// 				//   {
-// 				// 	  uint8_t *buff;
-// 				// 	  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
-// 				// 	  request->getParam("glyph_pos_x")->value().toCharArray((char *)buff, 50);
-// 				// 	  glyph_pos_x = atoi((char *)buff);
-// 				// 	  set_data_to_csv("glyph_pos_x", (char *)buff);
-// 				// 	  free(buff);
-// 				//   }
-// 				//   if (request->hasParam("glyph_pos_y"))
-// 				//   {
-// 				// 	  uint8_t *buff;
-// 				// 	  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
-// 				// 	  request->getParam("glyph_pos_y")->value().toCharArray((char *)buff, 50);
-// 				// 	  glyph_pos_y = atoi((char *)buff);
-// 				// 	  set_data_to_csv("glyph_pos_y", (char *)buff);
-// 				// 	  free(buff);
-// 				//   }
-
-// 				//   if (request->hasParam("sta_ssid"))
-// 				//   {
-// 				// 	  uint8_t *buff;
-// 				// 	  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
-// 				// 	  request->getParam("sta_ssid")->value().toCharArray((char *)buff, 50);
-// 				// 	  if (ssid)
-// 				// 	  {
-// 				// 		  free(ssid);
-// 				// 	  }
-// 				// 	  ssid = strdup((char *)buff);
-// 				// 	  set_data_to_csv("sta_ssid", (char *)buff);
-// 				// 	  free(buff);
-// 				//   }
-// 				//   if (request->hasParam("sta_password"))
-// 				//   {
-// 				// 	  uint8_t *buff;
-// 				// 	  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
-// 				// 	  request->getParam("sta_password")->value().toCharArray((char *)buff, 50);
-// 				// 	  if (password)
-// 				// 	  {
-// 				// 		  free(password);
-// 				// 	  }
-// 				// 	  password = strdup((char *)buff);
-// 				// 	  set_data_to_csv("sta_password", (char *)buff);
-// 				// 	  free(buff);
-// 				//   }
-// 				  if (request->hasParam("ap_ssid"))
-// 				  {
-// 					  uint8_t *buff;
-// 					  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
-// 					  request->getParam("ap_ssid")->value().toCharArray((char *)buff, 50);
-// 					  if (APssid)
-// 					  {
-// 						  free(APssid);
-// 					  }
-// 					  APssid = strdup((char *)buff);
-// 					  set_data_to_csv("ap_ssid", (char *)buff);
-// 					  free(buff);
-// 				  }
-// 				  if (request->hasParam("ap_password"))
-// 				  {
-// 					  uint8_t *buff;
-// 					  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
-// 					  request->getParam("ap_password")->value().toCharArray((char *)buff, 50);
-// 					  if (APpassword)
-// 					  {
-// 						  free(APpassword);
-// 					  }
-// 					  APpassword = strdup((char *)buff);
-// 					  set_data_to_csv("ap_password", (char *)buff);
-// 					  free(buff);
-// 				  }
-
-// 				  request->send(SPIFFS, "/StaIndex.html", String(), false, processor);
-// 				  //   request->send(SPIFFS, "/index.html", String(), false, processor);
-// 				  Serial.println("Client Here !");
-// 			  });
-// 	server.begin();
-// }
 
 void setup_credentials()
 {
 	char *tmp = 0;
 
-	// if (tmp = get_data_from_csv("orca_ip"))
-	// {
-	// 	orca_ip = IPAddress(get_octet((char *)tmp, 1), get_octet((char *)tmp, 2), get_octet((char *)tmp, 3), get_octet((char *)tmp, 4));
-	// 	free(tmp);
-	// }
-	// else
-	// {
-	// 	orca_ip = IPAddress(0, 0, 0, 0);
-	// }
-
-	// if (tmp = get_data_from_csv("orca_port"))
-	// {
-	// 	orca_port = atoi(tmp);
-	// 	free(tmp);
-	// }
-	// else
-	// {
-	// 	orca_port = 49160;
-	// }
-
-	// if (tmp = get_data_from_csv("usine_ip"))
-	// {
-
-	// 	usine_ip = IPAddress(get_octet((char *)tmp, 1), get_octet((char *)tmp, 2), get_octet((char *)tmp, 3), get_octet((char *)tmp, 4));
-	// 	free(tmp);
-	// }
-	// else
-	// {
-	// 	usine_ip = IPAddress(0, 0, 0, 0);
-	// }
-
-	// if (tmp = get_data_from_csv("usine_port"))
-	// {
-	// 	usine_port = atoi(tmp);
-	// 	free(tmp);
-	// }
-	// else
-	// {
-	// 	usine_port = 2002;
-	// }
-
-	// if ((tripode_id = get_data_from_csv("tripode_id")) == 0)
-	// {
-	// 	tripode_id = strdup("1_1");
-	// }
-
-	// if (tmp = get_data_from_csv("fractal_state_pos_x"))
-	// {
-	// 	fractal_state_pos_x = atoi(tmp);
-	// 	free(tmp);
-	// }
-
-
-	// if ((ssid = get_data_from_csv("sta_ssid")) == 0)
-	// {
-	// 	ssid = strdup("tripodesAP");
-	// }
 	if (tmp = get_data_from_csv("servo_1_min"))
 	{
 		servo_1_min = atoi(tmp);
@@ -1272,8 +563,6 @@ void setup_credentials()
 		servo_2_max = atoi(tmp);
 		free(tmp);
 	}
-
-
 	if (tmp = get_data_from_csv("udp_in_port"))
 	{
 		udp_in_port = atoi(tmp);
@@ -1305,14 +594,8 @@ void setup_credentials()
 	{
 		APpassword = strdup("44448888");
 	}
-
-	// Serial.printf("Sta Ssid (csv) : \'%s\'\n", get_data_from_csv("sta_ssid"));
-	// Serial.printf("Sta Password (csv) : \'%s\'\n", get_data_from_csv("sta_password"));
-	// Serial.printf("Ap Ssid (csv) : \'%s\'\n", get_data_from_csv("ap_ssid"));
-	// Serial.printf("Ap Password (csv) : \'%s\'\n", get_data_from_csv("ap_password"));
 }
 
-//Setup Motors, Udp here
 void ap_setup()
 {
 	WiFi.mode(WIFI_AP);
@@ -1320,14 +603,7 @@ void ap_setup()
 	IPAddress myIP = WiFi.softAPIP();
 	Serial.print("AP IP address: ");
 	Serial.println(myIP);
-	tft.printf("AP addr: %s\n", myIP.toString().c_str());
 	setup_server_for_ap();
-	ledcSetup(motorChannel1, motorFreq, motorResolution);
-	ledcSetup(motorChannel2, motorFreq, motorResolution);
-	ledcSetup(motorChannel3, motorFreq, motorResolution);
-	ledcAttachPin(MOTOR_1, motorChannel1);
-	ledcAttachPin(MOTOR_2, motorChannel2);
-	ledcAttachPin(MOTOR_3, motorChannel3);
 	Udp.begin(udp_in_port);
 
 	//Setup DNS
@@ -1341,396 +617,40 @@ void ap_setup()
 	}
 	Serial.println("mDNS responder started");
 
-	// Start TCP (HTTP) server
-	// server.begin();
-	// Serial.println("TCP server started");
-
-	// Add service to MDNS-SD
 	MDNS.addService("http", "tcp", 80);
 	MDNS.addService("http", "udp", udp_in_port); //???
 
-	// xTaskCreatePinnedToCore(update_sta_list, "update_sta_list", 10000, NULL, 1, &Task1, 1);
 }
-
-// void sta_setup()
-// {
-// 	// Set your Static IP address
-// 	// Set your Gateway IP address
-// 	// IPAddress gateway(10, 0, 1, 1);
-
-// 	// IPAddress subnet(255, 255, 0, 0);
-
-// 	WiFi.mode(WIFI_STA);
-
-// 	//Static ip attributon
-// 	// WiFi.config(local_IP, gateway, subnet);
-
-// 	// WiFi.begin(ssid, password);
-// 	tft.drawString("Connecting", tft.width() / 2, tft.height() / 2);
-// 	uint64_t timeStamp = millis();
-
-// 	ledcSetup(motorChannel1, motorFreq, motorResolution);
-// 	ledcSetup(motorChannel2, motorFreq, motorResolution);
-// 	ledcSetup(motorChannel3, motorFreq, motorResolution);
-// 	ledcAttachPin(MOTOR_1, motorChannel1);
-// 	ledcAttachPin(MOTOR_2, motorChannel2);
-// 	ledcAttachPin(MOTOR_3, motorChannel3);
-
-// 	Serial.println("Connecting");
-// 	while (WiFi.status() != WL_CONNECTED)
-// 	{
-// 		if (millis() - timeStamp > 60000)
-// 		{
-// 			ESP.restart();
-// 			tft.fillScreen(TFT_BLACK);
-// 			tft.drawString("Restarting", tft.width() / 2, tft.height() / 2);
-// 		}
-// 		delay(500);
-// 		Serial.println(wl_status_to_string(WiFi.status()));
-// 		tft.fillScreen(TFT_BLACK);
-
-// 		tft.drawString(wl_status_to_string(WiFi.status()), tft.width() / 2, tft.height() / 2);
-// 	}
-// 	Serial.print("Connected, IP address: ");
-// 	Serial.println(WiFi.localIP());
-// 	setup_server_for_sta();
-// 	Udp.begin(udp_in_port);
-// 	Serial.printf("Now listening at IP %s, UDP port %d\n", WiFi.localIP().toString().c_str(), udp_in_port);
-// }
 
 void setup()
 {
-	// EEPROM.begin(EEPROM_SIZE);
-	// put your setup code here, to run once:
-	current_mode = NONE_MODE;
 	Serial.begin(115200);
 	if (!SPIFFS.begin())
 	{
 		Serial.println("An Error has occurred while mounting SPIFFS");
 	}
-	// WiFi.mode(WIFI_STA);
-	// WiFi.begin(ssid, password);
-
 	setup_credentials();
-
 	Wire.begin();
-
 	servo1.attach(servo1Pin);
 	servo2.attach(servo2Pin);
-	// oscAddress = EEPROM.readUInt(0);
-	// current_mode = GYRO_MODE;
 
-	// delay(500);
-	// if (!gyro.init())
-	// {
-	// 	Serial.println("Failed to autodetect gyro type!");
-	// 	while (1)
-	// 		;
-	// }
-	// gyro.enableDefault();
-	// else
-	// {
-	// 	while (1)
-	// 	{
-	// 		gyro.read();
-	// 		Serial.printf("Gyro : %d | %d | %d\n", gyro.g.x, gyro.g.y, gyro.g.z);
-	// 		delay(100);
-	// 	}
-	// }
-
-	timers[3] = timerBegin(3, 80, true);
-	timerAttachInterrupt(timers[3], &call_buttons, false);
-	timerAlarmWrite(timers[3], 50 * 1000, true);
-	timerAlarmEnable(timers[3]);
-	button_init();
-
-	pinMode(ADC_EN, OUTPUT);
-	digitalWrite(ADC_EN, HIGH);
-	tft.init();
-	tft.setRotation(0);
-	tft.fillScreen(TFT_BLACK);
-
-	if (TFT_BL > 0)
-	{											// TFT_BL has been set in the TFT_eSPI library in the User Setup file TTGO_T_Display.h
-		pinMode(TFT_BL, OUTPUT);				// Set backlight pin to output mode
-		digitalWrite(TFT_BL, TFT_BACKLIGHT_ON); // Turn backlight on. TFT_BACKLIGHT_ON has been set in the TFT_eSPI library in the User Setup file TTGO_T_Display.h
-	}
-
-	tft.setTextSize(1);
-	tft.setTextColor(TFT_WHITE);
-	tft.setCursor(0, 0);
-	tft.setTextDatum(MC_DATUM);
-
-	tft.printf("Please selected your \nmode \n(with bottom buttons)");
-	tft.setCursor(0, 230);
-	tft.setTextColor(TFT_RED);
-	tft.printf("AP mode");
-	tft.setCursor(85, 230);
-	tft.setTextColor(TFT_BLUE);
-	tft.printf("STA mode");
-	tft.setCursor(0, 0);
+	servo1.write(servo_1_mid);
+	servo2.write(servo_2_mid);
 
 	server.serveStatic("/tripode.ico", SPIFFS, "/tripode.ico");
 	server.serveStatic("/main.css", SPIFFS, "/main.css");
 
-	// PS4.begin((char*)bluetooth_mac_addr);
 
 	ap_setup();
-	// for (;;)
-	// {
-	// 	Serial.print("tour de boucle :");
-	// 	Serial.println(current_mode);
-	// 	if (current_mode & STA_MASK)
-	// 	{
-	// 		// sta_setup();
-	// 		break;
-	// 	}
-	// 	else if (current_mode & AP_MASK)
-	// 	{
-	// 		break;
-	// 	}
-	// 	delay(100);
-	// }
 }
 
-void drawMotorsActivity2()
-{
-	TFT_eSprite drawing_sprite = TFT_eSprite(&tft);
 
-	drawing_sprite.setColorDepth(8);
-	drawing_sprite.createSprite(tft.width(), tft.height());
-
-	drawing_sprite.fillSprite(TFT_BLACK);
-	drawing_sprite.setTextSize(1);
-	drawing_sprite.setTextFont(1);
-	drawing_sprite.setTextColor(TFT_GREEN);
-	drawing_sprite.setTextDatum(MC_DATUM);
-	drawing_sprite.setCursor(0, 0);
-
-	uint16_t v = analogRead(ADC_PIN);
-	float battery_voltage = ((float)v / 4095.0) * 2.0 * 3.3 * (VREF / 1000.0);
-	drawing_sprite.setTextColor(TFT_RED);
-	drawing_sprite.printf("Voltage : ");
-	drawing_sprite.setTextColor(TFT_WHITE);
-	drawing_sprite.printf("%.2fv\n\n", battery_voltage);
-
-	drawing_sprite.setTextColor(TFT_RED);
-	drawing_sprite.printf("Ssid : ");
-	drawing_sprite.setTextColor(TFT_WHITE);
-	// drawing_sprite.printf("%s\n\n", ssid);
-
-	drawing_sprite.setTextColor(TFT_RED);
-	drawing_sprite.printf("Ip : ");
-	drawing_sprite.setTextColor(TFT_WHITE);
-	drawing_sprite.printf("%s\n\n", WiFi.localIP().toString().c_str());
-
-	drawing_sprite.setTextColor(TFT_RED);
-	drawing_sprite.printf("Udp port : ");
-	drawing_sprite.setTextColor(TFT_WHITE);
-	drawing_sprite.printf("%d\n\n", udp_in_port);
-
-	// %s\n\nIp : %s\n\nUdp port : %d\n\n", ssid,WiFi.localIP().toString().c_str(), udp_in_port);
-
-	drawing_sprite.setTextColor(TFT_RED);
-	drawing_sprite.printf("Up time : ");
-	drawing_sprite.setTextColor(TFT_WHITE);
-	drawing_sprite.printf("%llds\n", esp_timer_get_time() / 1000000);
-	drawBatteryLevel(&drawing_sprite, 100, 00, battery_voltage);
-
-	//uint32_t color1 = TFT_BLUE;
-	uint32_t color2 = TFT_WHITE;
-	drawing_sprite.drawCircle(67, 120, 26, color2);
-	drawing_sprite.drawCircle(27, 190, 26, color2);
-	drawing_sprite.drawCircle(108, 190, 26, color2);
-	drawing_sprite.drawLine(15, 167, 40, 150, color2);
-	drawing_sprite.drawLine(40, 150, 40, 120, color2);
-	drawing_sprite.drawLine(93, 120, 93, 150, color2);
-	drawing_sprite.drawLine(93, 150, 120, 167, color2);
-	drawing_sprite.drawLine(100, 215, 67, 195, color2);
-	drawing_sprite.drawLine(67, 195, 35, 215, color2);
-
-	//drawing_sprite.drawCircle(TFT_WIDTH / 2, TFT_HEIGHT/4 * i + TFT_HEIGHT/4 , 20, TFT_BLUE);
-	if (pwmValues[0])
-	{
-		drawing_sprite.fillCircle(67, 120, pwmValues[0] / 11, TFT_BLUE);
-		// Serial.printf("Seconds lefts : %lf\n", timerAlarmReadSeconds(timers[0]));
-	}
-	if (pwmValues[1])
-	{
-		drawing_sprite.fillCircle(27, 190, pwmValues[1] / 11, TFT_BLUE);
-	}
-	if (pwmValues[2])
-	{
-		drawing_sprite.fillCircle(108, 190, pwmValues[2] / 11, TFT_BLUE);
-	}
-	drawing_sprite.pushSprite(0, 0);
-	drawing_sprite.deleteSprite();
-}
-
-//create sta list instant
-
-void drawNetworkActivity(bool is_udp_sending)
-{
-	TFT_eSprite drawing_sprite = TFT_eSprite(&tft);
-
-	drawing_sprite.setColorDepth(8);
-	drawing_sprite.createSprite(tft.width(), tft.height());
-	drawing_sprite.fillSprite(TFT_BLACK);
-	drawing_sprite.setTextSize(1);
-	drawing_sprite.setTextFont(1);
-	drawing_sprite.setTextDatum(MC_DATUM);
-
-	drawing_sprite.setCursor(0, 0);
-	uint16_t v = analogRead(ADC_PIN);
-	float battery_voltage = ((float)v / 4095.0) * 2.0 * 3.3 * (VREF / 1000.0);
-	drawing_sprite.setTextColor(TFT_RED);
-	drawing_sprite.printf("Voltage : ");
-	drawing_sprite.setTextColor(TFT_WHITE);
-	drawing_sprite.printf("%.2fv\n", battery_voltage);
-	drawing_sprite.setTextColor(TFT_RED);
-	drawing_sprite.setCursor(0, 13);
-
-	drawing_sprite.printf("AP SSID: ");
-	drawing_sprite.setTextColor(TFT_WHITE);
-	drawing_sprite.printf("%s\n", APssid);
-	drawing_sprite.setTextColor(TFT_RED);
-	drawing_sprite.printf("AP PSSWD: ");
-	drawing_sprite.setTextColor(TFT_WHITE);
-	drawing_sprite.printf("%s\n", APpassword);
-
-	drawing_sprite.setTextColor(TFT_RED);
-	drawing_sprite.printf("Connected clients : ");
-	drawing_sprite.setTextColor(TFT_WHITE);
-	drawing_sprite.printf("%d\n", WiFi.softAPgetStationNum());
-
-	// wifi_sta_list_t wifi_sta_list;
-	// tcpip_adapter_sta_list_t adapter_sta_list;
-
-	// memset(&wifi_sta_list, 0, sizeof(wifi_sta_list));
-	// memset(&adapter_sta_list, 0, sizeof(adapter_sta_list));
-
-	// esp_wifi_ap_get_sta_list(&wifi_sta_list);
-	// tcpip_adapter_get_sta_list(&wifi_sta_list, &adapter_sta_list);
-
-	// for (int i = 0; i < adapter_sta_list.num; i++)
-	// {
-
-	// 	drawing_sprite.setTextColor(TFT_YELLOW);
-
-	// 	drawing_sprite.setCursor(0, 50 + (i * 14));
-
-	// 	// drawing_sprite.println("");
-
-	// 	tcpip_adapter_sta_info_t station = adapter_sta_list.sta[i];
-
-	// 	//drawing_sprite.setTextColor(TFT_BLUE);
-
-	// 	// drawing_sprite.print("MAC: ");
-	// 	// drawing_sprite.setTextColor(TFT_WHITE);
-
-	// 	// for(int i = 0; i< 6; i++){
-
-	// 	// 	drawing_sprite.printf("%02X", station.mac[i]);
-	// 	// 	if(i<5)drawing_sprite.print(":");
-	// 	// }
-
-	// 	drawing_sprite.setTextColor(TFT_BLUE);
-
-	// 	drawing_sprite.print("\nIP:  ");
-	// 	drawing_sprite.setTextColor(TFT_WHITE);
-
-	// 	drawing_sprite.println(ip4addr_ntoa(&(station.ip))); //leak?
-	// }
-	{
-		int i = 0;
-		sta_list_mutex.lock();
-		for (const t_sta_list &elem : sta_list)
-		{
-			drawing_sprite.setTextColor(TFT_YELLOW);
-
-			drawing_sprite.setCursor(0, 50 + (i * 14));
-			drawing_sprite.setTextColor(TFT_BLUE);
-
-			drawing_sprite.print("\nIP:  ");
-			drawing_sprite.setTextColor(TFT_WHITE);
-			drawing_sprite.println(elem.ip_adress);
-
-			i++;
-		}
-		sta_list_mutex.unlock();
-	}
-
-	drawBatteryLevel(&drawing_sprite, 100, 00, battery_voltage);
-	if (is_udp_sending)
-	{
-		drawUpdSendingActivity(&drawing_sprite);
-	}
-	drawing_sprite.pushSprite(0, 0);
-	drawing_sprite.deleteSprite();
-	// sta_list_mutex.lock();
-	// // for (const auto &elem : sta_list)
-	// // {
-	// // 	Serial.print("Ip : ");
-	// // 	Serial.print(elem.ip_adress);
-	// // 	Serial.print(" has website : ");
-	// // 	Serial.println(elem.has_website);
-	// // }
-	// sta_list_mutex.unlock();
-}
-
-void set_pwm0(int pwm)
-{
-	ledcWrite(0, pwm);
-}
-
-void set_pwm1(int pwm)
-{
-	ledcWrite(1, pwm);
-}
-
-void set_pwm2(int pwm)
-{
-	ledcWrite(2, pwm);
-}
-
-void stop_pwm0(void)
-{
-	if (timerPansements[0] <= 0)
-	{
-		Serial.printf("End of timer 0\n");
-		ledcWrite(0, 0);
-		timerAlarmDisable(timers[0]);
-	}
-	timerPansements[0]--;
-	// timerAlarmDisable(timers[0]);
-}
-
-void stop_pwm1(void)
-{
-	// ledcWrite(1, 0);
-	if (timerPansements[1] <= 0)
-	{
-		Serial.printf("End of timer 1\n");
-		ledcWrite(1, 0);
-		timerAlarmDisable(timers[1]);
-	}
-	timerPansements[1]--;
-}
-
-void stop_pwm2(void)
-{
-	ledcWrite(2, 0);
-	if (timerPansements[2] <= 0)
-	{
-		Serial.printf("End of timer 2\n");
-		ledcWrite(2, 0);
-		timerAlarmDisable(timers[2]);
-	}
-	timerPansements[2]--;
-}
 
 void look_for_udp_message()
 {
+	String convertedPacket;
+	char incomingPacket[255];
+
 	int packetSize = Udp.parsePacket();
 	if (packetSize)
 	{
@@ -1743,427 +663,40 @@ void look_for_udp_message()
 		convertedPacket = String(incomingPacket);
 		Serial.print("UDP Packet :");
 		Serial.println(convertedPacket);
-		// Serial.printf("Debug indexof = P:%d, D:%d, I:%d\n", convertedPacket.indexOf('P'), convertedPacket.indexOf('D'), convertedPacket.indexOf("I"));
-
 		if (convertedPacket.indexOf("SERVO") > -1 && convertedPacket.indexOf("ANGLE") > -1)
 		{
-			//t_data_task dataTask;
-
 			int servo = convertedPacket.substring(convertedPacket.indexOf("SERVO") + 5).toInt();
 			int angle = convertedPacket.substring(convertedPacket.indexOf("ANGLE") + 5).toInt();
 
 			Serial.printf("Servo : %d, Angle : %d \n", servo, angle);
 			if (angle < 0)
 			{
-				servo1.write(map(angle, -100, 0, servo_1_min, servo_1_mid));
-   				servo2.write(map(angle, -100, 0, servo_2_min, servo_2_mid));				
+				if (servo == 1)
+				{
+					servo1.write(map(angle, -100, 0, servo_1_min, servo_1_mid));
+				}
+   				else if (servo == 2)
+				{
+				   servo2.write(map(angle, -100, 0, servo_2_min, servo_2_mid));				
+				}
 			}
 			else
 			{
-				servo1.write(map(angle, 0, 100, servo_1_mid, servo_1_max));
-   				servo2.write(map(angle, 0, 100, servo_2_mid, servo_2_max));
+				if (servo == 1)
+				{
+					servo1.write(map(angle, 0, 100, servo_1_mid, servo_1_max));
+				}
+				if (servo == 2)
+				{
+   					servo2.write(map(angle, 0, 100, servo_2_mid, servo_2_max));
+				}
 			}
 		}
-	}
-}
-
-void sendOscMessage(char *oscPrefix, String oscMessage)
-{
-	OSCMessage msg(oscPrefix);
-	// String message = String(accel_event.acceleration.x, 3)
-	// 		+ " " + String(accel_event.acceleration.y, 3)
-	// 		+ " " + String(accel_event.acceleration.z, 3);
-	// String message = "Hello world" ;
-	char messageBuffer[50];
-	oscMessage.toCharArray(messageBuffer, 50);
-	Serial.println(messageBuffer);
-	msg.add(messageBuffer);
-	Udp.beginPacket(outIp, outPort);
-	msg.send(Udp);
-	Udp.endPacket();
-	msg.empty();
-}
-
-void sendOscFloatMessage(char *oscPrefix, float oscMessage, const IPAddress ipOut, const uint32_t portOut)
-{
-	char *tmpOscPrefix = 0;
-	tmpOscPrefix = (char *)malloc(sizeof(char) * (strlen(oscPrefix) + 10));
-
-	strcpy(tmpOscPrefix, oscPrefix);
-	strcat(tmpOscPrefix, "_");
-	// strcat(tmpOscPrefix, tripode_id);
-	// OSCMessage msg(oscPrefix);
-	OSCMessage msg(tmpOscPrefix);
-
-	// String message = String(accel_event.acceleration.x, 3)
-	// 		+ " " + String(accel_event.acceleration.y, 3)
-	// 		+ " " + String(accel_event.acceleration.z, 3);
-	// String message = "Hello world" ;
-	// char messageBuffer[50];
-	// oscMessage.toCharArray(messageBuffer, 50);
-	// Serial.println(oscMessage);
-	msg.add(oscMessage);
-	// Udp.beginPacket(outIp, outPort);
-	Udp.beginPacket(ipOut, portOut);
-	msg.send(Udp);
-	Udp.endPacket();
-	msg.empty();
-	free(tmpOscPrefix);
-}
-
-void sendUpdMessage(const char *buffer, const IPAddress ipOut, const uint32_t portOut)
-{
-	// Udp.beginPacket(ipOut, outPort);
-	Udp.beginPacket(ipOut, portOut);
-	// Udp.write(buffer, buffer_size);
-	Udp.printf(buffer);
-	// Udp.write('E');
-	Udp.endPacket();
-}
-
-void sendUpdAplhaMessage(float alpha, const IPAddress ipOut, const uint32_t portOut)
-{
-	// Udp.beginPacket(ipOut, outPort);
-	Udp.beginPacket(ipOut, portOut);
-	// Udp.write(buffer, buffer_size);
-	Udp.printf("write:E;0;%d", (int)((alpha)*100));
-	// Udp.write('E');
-	Udp.endPacket();
-	// delay(1000);
-}
-
-char convertBase35ToChar(int nb)
-{
-	if (nb < 0)
-	{
-		return ('0');
-	}
-	if (nb > 35)
-	{
-		return ('z');
-	}
-	if (nb < 10)
-	{
-		return ('0' + nb);
-	}
-	else
-	{
-		return ('a' + nb - 10);
-	}
-}
-
-// void sendUdpFractalState(float alpha, const IPAddress ipOut, const uint32_t portOut)
-// {
-// 	//VABCD
-// 	char letter = ' ';
-// 	if (alpha <= 0.6)
-// 		letter = 'A';
-// 	else if (alpha < 0.9)
-// 		letter = 'B';
-// 	else if (alpha <= 1.1)
-// 		letter = 'C';
-// 	else
-// 		letter = 'D';
-// 	char speed = '9';
-// 	int base35 = (int)fmap(alpha, 0, 1.5, 0, 35);
-
-// 	Udp.beginPacket(ipOut, portOut);
-// 	Udp.printf("write:2C9\n"
-// 			   " 2%cTE\n"
-// 			   "    \n"
-// 			   "%cR%cJ\n"
-// 			   "  X;%d;%d",
-// 			   speed, convertBase35ToChar(base35), convertBase35ToChar(base35 + 5), fractal_state_pos_x, fractal_state_pos_y);
-
-// 	// Udp.printf("write:%cR%c\n  XE;%d;%d", convertBase35ToChar(base35), convertBase35ToChar(base35 + 5), fractal_state_pos_x, fractal_state_pos_y);
-// 	Udp.endPacket();
-// }
-
-void sendOrcaLine(char *line, uint16_t x, uint16_t y, const IPAddress ipOut, const uint32_t portOut)
-{
-	Udp.beginPacket(ipOut, portOut);
-	Udp.printf("write:%s;%d;%d", line, x, y);
-	Udp.endPacket();
-}
-
-void sendOscMessage(float dfa_value, t_sensors *sensors, const IPAddress ipOut, const uint32_t portOut)
-{
-	// Udp.beginPacket(, outIp, outPort);
-
-	sendOscFloatMessage("/dfa", (float)dfa_value, ipOut, portOut);
-
-	sendOscFloatMessage("/accelerometer_x", (float)sensors->accel.x, ipOut, portOut);
-	sendOscFloatMessage("/accelerometer_y", (float)sensors->accel.y, ipOut, portOut);
-	sendOscFloatMessage("/accelerometer_z", (float)sensors->accel.z, ipOut, portOut);
-	sendOscFloatMessage("/accelerometer_normal", (float)sqrt(sensors->accel.x * sensors->accel.x + sensors->accel.y * sensors->accel.y + sensors->accel.z * sensors->accel.z), ipOut, portOut);
-
-	sendOscFloatMessage("/gyroscope_x", (float)sensors->gyro.x, ipOut, portOut);
-	sendOscFloatMessage("/gyroscope_y", (float)sensors->gyro.y, ipOut, portOut);
-	sendOscFloatMessage("/gyroscope_z", (float)sensors->gyro.z, ipOut, portOut);
-	sendOscFloatMessage("/gyroscope_normal", (float)sqrt(sensors->gyro.x * sensors->gyro.x + sensors->gyro.y * sensors->gyro.y + sensors->gyro.z * sensors->gyro.z), ipOut, portOut);
-
-	sendOscFloatMessage("/magnetometer_x", (float)sensors->mag.x, ipOut, portOut);
-	sendOscFloatMessage("/magnetometer_y", (float)sensors->mag.y, ipOut, portOut);
-	sendOscFloatMessage("/magnetometer_z", (float)sensors->mag.z, ipOut, portOut);
-}
-
-float updateDFA(t_sensors sensors)
-{
-	static float *x = 0;
-	static float *x_tmp = 0;
-	static float *alpha_mean = 0;
-
-	size_t size_x = 400;
-	size_t size_tmp_x = 20;
-	size_t size_alpha_mean = 50;
-	static size_t current_index = 0;
-	static size_t current_alpha_index = 0;
-
-	if (x == 0)
-	{
-		x = (float *)malloc(sizeof(float) * size_x);
-		x_tmp = (float *)malloc(sizeof(float) * size_x);
-		alpha_mean = (float *)malloc(sizeof(float) * size_alpha_mean);
-		for (size_t i = 0; i < size_x; i++)
-		{
-			x[i] = 0.0;
-		}
-		for (size_t i = 0; i < size_alpha_mean; i++)
-		{
-			alpha_mean[i] = 0.0;
-		}
-	}
-	x[current_index] = map(sqrtf(sensors.gyro.x * sensors.gyro.x + sensors.gyro.y * sensors.gyro.y + sensors.gyro.z * sensors.gyro.z), 0, 37000, 0, 100);
-	for (size_t i = 0; i < size_x; i++)
-	{
-		x_tmp[size_x - i - 1] = x[(current_index - i) % size_x];
-	}
-
-	for (size_t i = 0; i < size_tmp_x; i++)
-	{
-		size_t beg_i = map(i, 0, size_tmp_x, 0, size_x);
-		float max = 0;
-		for (size_t j = 0; j < size_x / size_tmp_x; j++)
-		{
-			if (max < x_tmp[beg_i + j])
-			{
-				max = x_tmp[beg_i + j];
-			}
-		}
-		x_tmp[i] = max;
-		// Serial.printf("%f, ", max);
-	}
-	// Serial.printf("\n");
-
-	// Serial.printf("current index : %d\n", current_index);
-	// for (size_t i = 0; i < size_x; i++)
-	// {
-	// 	Serial.printf("x_tmp[%d] : %f ", i, x_tmp[i]);
-	// 	Serial.printf("x[%d] : %f\n", i, x[i]);
-	// }
-
-	current_index = current_index >= size_x - 1 ? 0 : current_index + 1;
-
-	// printf("Dfa : %f\n", dfa(x, sizeof(x) / 4, 1, 4, 0.5));
-
-	// float dfa_value = dfa(x_tmp, size_tmp_x, 2, 4.5, 0.5);
-	float dfa_value = dfa(x_tmp, size_tmp_x, 1, 4, 0.2);
-	dfa_value = abs(dfa_value);
-
-	alpha_mean[current_alpha_index] = dfa_value;
-	//
-	dfa_value = mean(alpha_mean, size_alpha_mean);
-
-	current_alpha_index = current_alpha_index >= size_alpha_mean ? 0 : current_alpha_index + 1;
-
-	// if (dfa_value >= 0.5 && dfa_value <= 3)
-	// {
-	// 	dfa_value = 0.4342523523;
-	// }
-	dfa_value = fmap(dfa_value, 0, 18, 0, 1.5);
-	// dfa_value = dfa_value * dfa_value;
-	// Serial.printf("Alpha : %f\n", dfa_value);
-
-	if (SCALE_DFA == 1)
-	{
-		if (mean(x_tmp, size_tmp_x) < SCALE_DFA_TRESHOLD)
-		{
-			dfa_value /= fmap(mean(x_tmp, size_tmp_x), 0, SCALE_DFA_TRESHOLD, 6, 1);
-		}
-	}
-
-	return (dfa_value);
-	// return (dfa(x_tmp, size_x, 4, 10, 0.1));
-	// dfa(x, sizeof(x) / 4, 2, 4.5, 0.5));
-}
-
-// void sendOrcaLine(char *line, uint16_t x, uint16_t y, uint16_t size, const IPAddress ipOut, const uint32_t portOut)
-// void drawInOrca(float alpha, const IPAddress ipOut, const uint32_t portOut)
-// {
-
-// 	if (alpha <= 0.6)
-// 	{
-// 		sendOrcaLine("  R                                                \n"
-// 					 "2X                                                 \n"
-// 					 "                                                   \n"
-// 					 "  CO                                               \n"
-// 					 "   8G  X                                           \n",
-// 					 glyph_pos_x, glyph_pos_y, ipOut, portOut);
-// 		sendOrcaLine("      #XX#                    #XXXXXX#    #XXXXXX# \n"
-// 					 "      #XX#                    #XXXXXX#    #XXXXXX# \n"
-// 					 "      #XX#                    #XXXXXX#    #XXXXXX# \n"
-// 					 "      #XXXXXX#                    #XX#    #XXXXXX# \n"
-// 					 "      #XXXXXX#                    #XX#    #XXXXXX# \n"
-// 					 "      #XXXXXX#                    #XX#    #XXXXXX# \n"
-// 					 "                                          #XX#     \n"
-// 					 "                                          #XX#     \n"
-// 					 "                                          #XX#     \n"
-// 					 "      #XX#                    #XXXXXX#    #XX#     \n"
-// 					 "      #XX#                    #XXXXXX#    #XX#     \n"
-// 					 "      #XX#                    #XXXXXX#    #XX#     \n",
-// 					 glyph_pos_x, glyph_pos_y + 5, ipOut, portOut);
-// 		sendOrcaLine("      #XX#                    #XXXXXX#    #XX#     \n"
-// 					 "      #XX#                    #XXXXXX#    #XX#     \n"
-// 					 "      #XX#                    #XXXXXX#    #XX#     \n"
-// 					 "      #XXXXXX#                    #XX#    #XXXXXX# \n"
-// 					 "      #XXXXXX#                    #XX#    #XXXXXX# \n"
-// 					 "      #XXXXXX#                    #XX#    #XXXXXX# \n"
-// 					 "      #XXXXXX#                #XXXXXX#    #XXXXXX# \n"
-// 					 "      #XXXXXX#                #XXXXXX#    #XXXXXX# \n"
-// 					 "      #XXXXXX#                #XXXXXX#    #XXXXXX# \n"
-// 					 "      #XXXXXX#                    #XX#    #XXXXXX# \n"
-// 					 "      #XXXXXX#                    #XX#    #XXXXXX# \n"
-// 					 "      #XXXXXX#                    #XX#    #XXXXXX# \n",
-// 					 glyph_pos_x, glyph_pos_y + 17, ipOut, portOut);
-// 	}
-// 	else if (alpha <= 0.9)
-// 	{
-// 		sendOrcaLine("  R                                                \n"
-// 					 "2X                                                 \n"
-// 					 "                                                   \n"
-// 					 "  CO                                               \n"
-// 					 "   8G  X                                           \n",
-// 					 glyph_pos_x, glyph_pos_y, ipOut, portOut);
-// 		sendOrcaLine("      #XX#        #XX#        #XXXXXX#    #XXXXXX# \n"
-// 					 "      #XX#        #XX#        #XXXXXX#    #XXXXXX# \n"
-// 					 "      #XX#        #XX#        #XXXXXX#    #XXXXXX# \n"
-// 					 "      #XXXXXX#    #XXXXXX#        #XX#    #XXXXXX# \n"
-// 					 "      #XXXXXX#    #XXXXXX#        #XX#    #XXXXXX# \n"
-// 					 "      #XXXXXX#    #XXXXXX#        #XX#    #XXXXXX# \n"
-// 					 "                                          #XX#     \n"
-// 					 "                                          #XX#     \n"
-// 					 "                                          #XX#     \n"
-// 					 "      #XX#        #XXXXXX#                #XX#     \n"
-// 					 "      #XX#        #XXXXXX#                #XX#     \n"
-// 					 "      #XX#        #XXXXXX#                #XX#     \n",
-// 					 glyph_pos_x, glyph_pos_y + 5, ipOut, portOut);
-// 		sendOrcaLine("      #XX#        #XXXXXX#                #XX#     \n"
-// 					 "      #XX#        #XXXXXX#                #XX#     \n"
-// 					 "      #XX#        #XXXXXX#                #XX#     \n"
-// 					 "      #XXXXXX#        #XX#                #XXXXXX# \n"
-// 					 "      #XXXXXX#        #XX#                #XXXXXX# \n"
-// 					 "      #XXXXXX#        #XX#                #XXXXXX# \n"
-// 					 "      #XXXXXX#    #XXXXXX#                #XXXXXX# \n"
-// 					 "      #XXXXXX#    #XXXXXX#                #XXXXXX# \n"
-// 					 "      #XXXXXX#    #XXXXXX#                #XXXXXX# \n"
-// 					 "      #XXXXXX#    #XXXXXX#                #XXXXXX# \n"
-// 					 "      #XXXXXX#    #XXXXXX#                #XXXXXX# \n"
-// 					 "      #XXXXXX#    #XXXXXX#                #XXXXXX# \n",
-// 					 glyph_pos_x, glyph_pos_y + 17, ipOut, portOut);
-// 	}
-// 	else if (alpha <= 1.1)
-// 	{
-// 		sendOrcaLine("  R                                                \n"
-// 					 "2X                                                 \n"
-// 					 "                                                   \n"
-// 					 "  CO                                               \n"
-// 					 "   8G  X                                           \n",
-// 					 glyph_pos_x, glyph_pos_y, ipOut, portOut);
-// 		sendOrcaLine("                  #XX#        #XXXXXX#    #XXXXXX# \n"
-// 					 "                  #XX#        #XXXXXX#    #XXXXXX# \n"
-// 					 "                  #XX#        #XXXXXX#    #XXXXXX# \n"
-// 					 "                  #XXXXXX#        #XX#    #XXXXXX# \n"
-// 					 "                  #XXXXXX#        #XX#    #XXXXXX# \n"
-// 					 "                  #XXXXXX#        #XX#    #XXXXXX# \n"
-// 					 "                                          #XX#     \n"
-// 					 "                                          #XX#     \n"
-// 					 "                                          #XX#     \n"
-// 					 "      #XX#        #XXXXXX#    #XXXXXX#    #XX#     \n"
-// 					 "      #XX#        #XXXXXX#    #XXXXXX#    #XX#     \n"
-// 					 "      #XX#        #XXXXXX#    #XXXXXX#    #XX#     \n",
-// 					 glyph_pos_x, glyph_pos_y + 5, ipOut, portOut);
-// 		sendOrcaLine("      #XX#        #XXXXXX#    #XXXXXX#    #XX#     \n"
-// 					 "      #XX#        #XXXXXX#    #XXXXXX#    #XX#     \n"
-// 					 "      #XX#        #XXXXXX#    #XXXXXX#    #XX#     \n"
-// 					 "      #XXXXXX#        #XX#        #XX#    #XXXXXX# \n"
-// 					 "      #XXXXXX#        #XX#        #XX#    #XXXXXX# \n"
-// 					 "      #XXXXXX#        #XX#        #XX#    #XXXXXX# \n"
-// 					 "      #XXXXXX#    #XXXXXX#    #XXXXXX#    #XXXXXX# \n"
-// 					 "      #XXXXXX#    #XXXXXX#    #XXXXXX#    #XXXXXX# \n"
-// 					 "      #XXXXXX#    #XXXXXX#    #XXXXXX#    #XXXXXX# \n"
-// 					 "      #XXXXXX#    #XXXXXX#        #XX#    #XXXXXX# \n"
-// 					 "      #XXXXXX#    #XXXXXX#        #XX#    #XXXXXX# \n"
-// 					 "      #XXXXXX#    #XXXXXX#        #XX#    #XXXXXX# \n",
-// 					 glyph_pos_x, glyph_pos_y + 17, ipOut, portOut);
-// 	}
-// 	else
-// 	{
-// 		sendOrcaLine("  R                                                \n"
-// 					 "2X                                                 \n"
-// 					 "                                                   \n"
-// 					 "  CO                                               \n"
-// 					 "   8G  X                                           \n",
-// 					 glyph_pos_x, glyph_pos_y, ipOut, portOut);
-// 		sendOrcaLine("      #XX#        #XX#        #XXXXXX#    #XXXXXX# \n"
-// 					 "      #XX#        #XX#        #XXXXXX#    #XXXXXX# \n"
-// 					 "      #XX#        #XX#        #XXXXXX#    #XXXXXX# \n"
-// 					 "      #XXXXXX#    #XXXXXX#        #XX#    #XXXXXX# \n"
-// 					 "      #XXXXXX#    #XXXXXX#        #XX#    #XXXXXX# \n"
-// 					 "      #XXXXXX#    #XXXXXX#        #XX#    #XXXXXX# \n"
-// 					 "                                          #XX#     \n"
-// 					 "                                          #XX#     \n"
-// 					 "                                          #XX#     \n"
-// 					 "      #XX#        #XXXXXX#    #XXXXXX#    #XX#     \n"
-// 					 "      #XX#        #XXXXXX#    #XXXXXX#    #XX#     \n"
-// 					 "      #XX#        #XXXXXX#    #XXXXXX#    #XX#     \n",
-// 					 glyph_pos_x, glyph_pos_y + 5, ipOut, portOut);
-// 		sendOrcaLine("      #XX#        #XXXXXX#    #XXXXXX#    #XX#     \n"
-// 					 "      #XX#        #XXXXXX#    #XXXXXX#    #XX#     \n"
-// 					 "      #XX#        #XXXXXX#    #XXXXXX#    #XX#     \n"
-// 					 "      #XXXXXX#        #XX#        #XX#    #XXXXXX# \n"
-// 					 "      #XXXXXX#        #XX#        #XX#    #XXXXXX# \n"
-// 					 "      #XXXXXX#        #XX#        #XX#    #XXXXXX# \n"
-// 					 "      #XXXXXX#    #XXXXXX#    #XXXXXX#    #XXXXXX# \n"
-// 					 "      #XXXXXX#    #XXXXXX#    #XXXXXX#    #XXXXXX# \n"
-// 					 "      #XXXXXX#    #XXXXXX#    #XXXXXX#    #XXXXXX# \n"
-// 					 "      #XXXXXX#    #XXXXXX#        #XX#    #XXXXXX# \n"
-// 					 "      #XXXXXX#    #XXXXXX#        #XX#    #XXXXXX# \n"
-// 					 "      #XXXXXX#    #XXXXXX#        #XX#    #XXXXXX# \n",
-// 					 glyph_pos_x, glyph_pos_y + 17, ipOut, portOut);
-// 	}
-// }
-
-void udpInitOrca(const IPAddress ipOut, const uint32_t portOut)
-{
-	// sendOrcaLine("              #XX#        #XXXXXX#    #XXXXXX#    #XX#     \n", 20, 0, ipOut, portOut);
-
-	for (uint16_t y = 0; y < 100; y++)
-	{
-		Udp.beginPacket(ipOut, portOut);
-		Udp.printf("write:;#%dD300I255P1;%d;%d", y % 3, 20, y + 10);
-		Udp.endPacket();
 	}
 }
 
 void loop()
 {
-	// t_sensors sensors;
-	// if (current_mode & NORM_MASK)
-
 	look_for_udp_message();
-
-	//Serial.println(".");
 	delay(25);
-	// delay(500);
-	// put your main code here, to run repeatedly:
 }

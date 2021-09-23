@@ -2,6 +2,7 @@
 
 <head>
 	<meta charset="UTF-8">
+	<title> RC Project </title>
 	<link rel="icon" href="tripode.ico">
 	<link rel="stylesheet" href="main.css">
 </head>
@@ -49,23 +50,6 @@
 		</div>
 	</form>
 
-
-	<!-- <form action="/" method="get" class="form-example">
-		<div class="form-example">
-			<label for="bluetooth_mac_addr">BLUETOOTH MAC :</label>
-			<input type="text" name="bluetooth_mac_addr" id="bluetooth_mac_addr" placeholder="Bluetooth Mac Addr"
-				value="%BLUETOOTHMACADDR%" required>
-		</div>
-		<div class="form-example">
-			<label for="bluetooth_active">BLUETOOTH ACTIVE :</label>
-			<input type="number" min="0" max="1" name="bluetooth_active" id="bluetooth_active" placeholder="position"
-				value="%BLUETOOTHACTIVE%" required>
-		</div>
-		<div class="form-example">
-			<input type="submit" value="Update">
-		</div>
-	</form> -->
-
 	<form action="/" method="get" class="form-example">
 		<div class="form-example">
 			<label for="udp_in_port">UDP IN PORT :</label>
@@ -101,6 +85,16 @@
 			<input type="submit" value="Update">
 		</div>
 	</form>
+	<div class="help-section">
+		<h3>USAGE</h3>
+		eg : nc -u rc.local 49161<br/>
+		then, "SERVO1ANGLE100"<br/>
+		<br/>
+		with SERVO1 or SERVO2 <br/> and ANGLE between -100 and 100
+	</div>
+
+
+
 </body>
 
 </html>
