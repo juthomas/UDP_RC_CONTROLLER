@@ -78,6 +78,17 @@
 
 	<form action="/" method="get" class="form-example">
 		<div class="form-example">
+			<label for="local_dns">LOCAL DNS :</label>
+			<input type="text" name="local_dns" id="local_dns" placeholder="local_dns" value="%LOCALDNS%" required>
+			<label for="local_dns">(.local)</label>
+		</div>
+		<div class="form-example">
+			<input type="submit" value="Update">
+		</div>
+	</form>
+
+	<form action="/" method="get" class="form-example">
+		<div class="form-example">
 			<label for="ap_ssid">AP SSID :</label>
 			<input type="text" name="ap_ssid" id="ap_ssid" placeholder="Ap Ssid" value="%APSSID%" required>
 		</div>

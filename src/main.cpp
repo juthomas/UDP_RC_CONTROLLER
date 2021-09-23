@@ -32,6 +32,7 @@ std::mutex sta_list_mutex;
 char *APssid;
 char *APpassword;
 
+char *local_dns;
 char *bluetooth_mac_addr;
 int16_t bluetooth_active = 1;
 // char *tripode_id;
@@ -515,6 +516,11 @@ String processor(const String &var)
 		free(intStr);
 		return (StringPos);
 	}
+	else if (var == "LOCALDNS")
+	{
+		String string_local_dns = String(local_dns);
+		return (string_local_dns);
+	}
 	else if (var == "BLUETOOTHMACADDR")
 	{
 		String string_bluetooth_mac_addr = String(bluetooth_mac_addr);
@@ -919,19 +925,19 @@ void setup_server_for_ap()
 					  free(buff);
 				  }
 
-				  //   if (request->hasParam("sta_ssid"))
-				  //   {
-				  // 	  uint8_t *buff;
-				  // 	  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
-				  // 	  request->getParam("sta_ssid")->value().toCharArray((char *)buff, 50);
-				  // 	  if (ssid)
-				  // 	  {
-				  // 		  free(ssid);
-				  // 	  }
-				  // 	  ssid = strdup((char *)buff);
-				  // 	  set_data_to_csv("sta_ssid", (char *)buff);
-				  // 	  free(buff);
-				  //   }
+				    if (request->hasParam("local_dns"))
+				    {
+				  	  uint8_t *buff;
+				  	  buff = (uint8_t *)malloc(sizeof(uint8_t) * 50);
+				  	  request->getParam("local_dns")->value().toCharArray((char *)buff, 50);
+				  	  if (local_dns)
+				  	  {
+				  		  free(local_dns);
+				  	  }
+				  	  local_dns = strdup((char *)buff);
+				  	  set_data_to_csv("local_dns", (char *)buff);
+				  	  free(buff);
+				    }
 				  if (request->hasParam("udp_in_port"))
 				  {
 					  uint8_t *buff;
@@ -1280,6 +1286,11 @@ void setup_credentials()
 		free(tmp);
 	}
 
+	if ((local_dns = get_data_from_csv("local_dns")) == 0)
+	{
+		local_dns = strdup("rc");
+	}
+
 	if ((bluetooth_mac_addr = get_data_from_csv("bluetooth_mac_addr")) == 0)
 	{
 		bluetooth_mac_addr = strdup("01:01:01:01:01:01");
@@ -1320,7 +1331,7 @@ void ap_setup()
 	Udp.begin(udp_in_port);
 
 	//Setup DNS
-	if (!MDNS.begin("rc"))
+	if (!MDNS.begin(local_dns))
 	{
 		Serial.println("Error setting up MDNS responder!");
 		while (1)

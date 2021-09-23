@@ -3,6 +3,7 @@ ap_password,44448888
 bluetooth_mac_addr,01:01:01:01:01:01
 bluetooth_active,1
 udp_in_port,49161
+local_dns,rc
 servo_1_min,0
 servo_1_mid,90
 servo_1_max,180
