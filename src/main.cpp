@@ -663,33 +663,27 @@ void look_for_udp_message()
 		convertedPacket = String(incomingPacket);
 		Serial.print("UDP Packet :");
 		Serial.println(convertedPacket);
-		if (convertedPacket.indexOf("SERVO") > -1 && convertedPacket.indexOf("ANGLE") > -1)
+		if (convertedPacket.indexOf("TURN") > -1 && convertedPacket.indexOf("ACCEL") > -1)
 		{
-			int servo = convertedPacket.substring(convertedPacket.indexOf("SERVO") + 5).toInt();
-			int angle = convertedPacket.substring(convertedPacket.indexOf("ANGLE") + 5).toInt();
+			int turn = convertedPacket.substring(convertedPacket.indexOf("TURN") + 4).toInt();
+			int accel = convertedPacket.substring(convertedPacket.indexOf("ACCEL") + 5).toInt();
 
-			Serial.printf("Servo : %d, Angle : %d \n", servo, angle);
-			if (angle < 0)
+			Serial.printf("Turn : %d, Accel : %d \n", turn, accel);
+			if (accel < 0)
 			{
-				if (servo == 1)
-				{
-					servo1.write(map(angle, -100, 0, servo_1_min, servo_1_mid));
-				}
-   				else if (servo == 2)
-				{
-				   servo2.write(map(angle, -100, 0, servo_2_min, servo_2_mid));				
-				}
+				servo1.write(map(accel, -100, 0, servo_1_min, servo_1_mid));
 			}
 			else
 			{
-				if (servo == 1)
-				{
-					servo1.write(map(angle, 0, 100, servo_1_mid, servo_1_max));
-				}
-				if (servo == 2)
-				{
-   					servo2.write(map(angle, 0, 100, servo_2_mid, servo_2_max));
-				}
+				servo1.write(map(accel, 0, 100, servo_1_mid, servo_1_max));
+			}
+			if (turn < 0)
+			{
+				servo2.write(map(turn, -100, 0, servo_2_min, servo_2_mid));
+			}
+			else
+			{
+				servo2.write(map(turn, 0, 100, servo_2_mid, servo_2_max));
 			}
 		}
 	}
